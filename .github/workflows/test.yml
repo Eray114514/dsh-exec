@@ -1,0 +1,25 @@
+name: test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # engines says >=22; 24 is the current LTS line and runs the suite green.
+        node-version: ['22', '24']
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      # Zero runtime dependencies: the suite only needs node itself, and it
+      # never touches the network or a real DSH home.
+      - name: Test
+        run: npm test

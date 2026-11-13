@@ -1,0 +1,56 @@
+# dsh-exec — run DeepSeek Harness from a shell, a script or another agent.
+#
+# Every run creates its session through `sessionController.create({ workspaceId,
+# agentPreset })` inside the desktop host, so the conversation appears in the
+# sidebar immediately. A separate headless process writing to ~/.dsh/sessions
+# does NOT get indexed by the sidebar (the registry lives in memory).
+#
+# Defaults below are the shipped, machine-neutral ones: no model is pinned and
+# the permission policy is least-privilege. Per-machine preferences belong in
+# the plugin's settings page (stored in <DSH_HOME>/plugin-data/dsh-exec/) or in
+# this profile's own cordis.patch.yml — never in the package defaults.
+
+- insert:
+    - id: dsh-exec
+      name: dsh-exec
+      config:
+        enabled: true
+        # standard | ptc | minimal | cordis — the four presets the host ships.
+        # `standard` and `ptc` are the two the UI shows by default; `minimal`
+        # (bash + editor only) and `cordis` (the preset-maker) are reachable
+        # here and through `--mode` even though the picker hides them.
+        defaultMode: standard
+        # Empty = keep the model the desktop would have used. Set a model id
+        # (and optionally `defaultProvider`) only when runs must be
+        # reproducible across machines that share that provider.
+        defaultModel: ''
+        defaultProvider: ''
+        # off | low | medium | high | xhigh (xhigh exists on some providers only)
+        defaultEffort: ''
+        # true pins new sessions to the model above. Off by default: a pin to a
+        # model this machine lacks would fail every run.
+        enforceDefaults: false
+        # read-only | workspace-write | danger-full-access
+        # Full access is a per-run opt-in (`--permission danger-full-access`),
+        # never the shipped default.
+        defaultPermission: workspace-write
+        # ask | never | on-request — `never` keeps a non-interactive run from
+        # blocking on an approval prompt it has no UI to answer.
+        defaultApproval: never
+        # Create the workspace row when cwd has none, otherwise the session
+        # lands in "ungrouped" and looks missing in the sidebar.
+        autoCreateWorkspace: true
+        # A quiet log during a 429 retry is NOT a crash. Emit a progress frame
+        # on this cadence so a caller can tell "waiting" from "dead".
+        heartbeatMs: 15000
+        maxConcurrentRuns: 4
+        maxEventBuffer: 800
+        # Exit forensics: answer "who closed DSH?" after the fact.
+        #   dsh-exec-heartbeat.json   overwritten; a fresh one with no exit
+        #                             event proves the process was killed
+        #   dsh-exec-lifecycle.jsonl  start / before-quit (with stack) /
+        #                             will-quit / quit / exit / signals
+        lifecycle:
+          enabled: true
+          heartbeatMs: 20000
+          maxLogBytes: 524288

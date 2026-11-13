@@ -1,0 +1,44 @@
+name: publish
+
+# Publishing is tag-driven: bump the version, push a `v*` tag, and this runs.
+# Nothing manual after that — no OTP, no token on a laptop.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  # Required for OIDC: this is what lets npm verify the workflow's identity
+  # instead of trusting a long-lived token.
+  id-token: write
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # The published artifact must pass on the LOWEST supported Node, not just
+      # the one that ships an npm CLI new enough for trusted publishing.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Test on the lowest supported Node
+        run: npm test
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          cache: ''
+
+      # Never publish something that does not pass its own tests.
+      - name: Test
+        run: npm test
+
+      # No --provenance flag: publishing through a trusted publisher from a
+      # public repo produces the provenance attestation automatically.
+      - name: Publish
+        run: npm publish
