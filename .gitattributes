@@ -1,0 +1,5 @@
+* text=auto
+# The CLI is executed by node through its shebang; CRLF would break it on
+# Linux and macOS, and npm ships this file byte-for-byte in the tarball.
+bin/dshx text eol=lf
+*.cmd text eol=crlf
