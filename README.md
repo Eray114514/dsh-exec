@@ -1,5 +1,7 @@
 # dsh-exec
 
+中文 | [English](README.en.md)
+
 **在终端、脚本或 CI 里一行调用 DeepSeek Harness，并且会话会实时出现在桌面端侧边栏。**
 
 ```sh
@@ -71,6 +73,28 @@ dshx --cwd 'D:/repo' --task-file $path
 
 界面上 `ptc` 和 `minimal` 默认藏在「代码工作工具」开关后面，但预设 id 本身可用，所以 `--mode` 直接选得到。
 
+**这是这个插件和官方一次性 headless 最实质的区别。** `dsh --profile headless "TASK"` 走的是 `@deepseek-ai/dsh-headless`（一个直接跑 core Agent/Session 的 bundle，没有 Host 层），它的组合里**没有 `agent-preset-registry`** —— 可以自己验：
+
+```sh
+dsh --profile headless --dump-config | grep preset   # 只有 permission-presets
+dsh --profile web      --dump-config | grep preset   # agent-preset-registry 在这里
+```
+
+预设只存在于 web/desktop 那套组合里。`dsh-exec` 是在桌面进程内通过 `sessionController.create({ agentPreset })` 建会话的，所以等于把那四个预设借出来给命令行用：同一个 `dshx`，换个 `--mode` 就是另一种 Agent。
+
+## 和别的"headless 命令行"比
+
+| | `codex exec` | `claude -p` | `dsh --profile headless` | `dshx` |
+|---|---|---|---|---|
+| 一行调用、stdout 出最终回答 | ✅ | ✅ | ✅ | ✅ |
+| 会话留在**同一个** GUI 里、能点进去继续 | 各自 CLI 的会话，不进 DSH | 各自 CLI 的会话，不进 DSH | ❌ 侧边栏看不见 | ✅ 侧边栏实时更新 |
+| 可选 Agent 预设 | — 一套 | — 一套 | ❌ 组合里没有 preset registry | ✅ standard / ptc / minimal / cordis |
+| 复用本机已配好的模型、插件、技能、权限 | — | — | ✅ | ✅ |
+| 流式事件给程序消费 | 自家 JSON 格式 | 自家 stream-json | — | ✅ `--json`（NDJSON） |
+| 长任务静默期的心跳 | — | — | — | ✅ `progress{alive:true}` |
+
+"—" 是"这个工具没有这个概念"，不是缺点：`codex exec` 和 `claude -p` 各自有成熟的会话体系，只是那套体系不在 DSH 里。最后一行针对的是 Gemini 这类会长时间 429 的 provider —— 静默 5 分钟到底是"在等"还是"挂了"，只有心跳能回答。
+
 ## 默认值是"中性"的
 
 这个包会装到**别人的机器**上，所以出厂默认不绑定作者的任何偏好：
@@ -79,7 +103,7 @@ dshx --cwd 'D:/repo' --task-file $path
 - **权限 `workspace-write` + 审批 `never`**：够干活，也不会在无人值守时卡在审批弹窗上。`danger-full-access` 是**单次运行的选择**（`--permission danger-full-access`），不是默认值。
 - 不传 `--model` / `--effort` 就一个都不发，不会被隐藏默认值影响。
 
-想改本机默认值，**不要改 YAML** —— 打开设置页保存即可：写在 `<DSH_HOME>/plugin-data/dsh-exec/config.json`，叠加在 profile 的 `cordis.patch.yml` 之上（「恢复配置默认值」会删掉这个文件）。
+想改本机默认值：打开设置页保存即可，**不必**改 YAML——存到 `<DSH_HOME>/plugin-data/dsh-exec/config.json`，叠加在 profile 的 `cordis.patch.yml` 之上（「恢复配置默认值」会删掉这个文件）。当然想直接改 YAML 也行，那一层是 profile 自己的，优先级比这个文件低。
 
 ## 设置页
 

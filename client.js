@@ -553,30 +553,77 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function apply(ctx) {
-      const locale = ctx.get("locale");
-      if (locale !== undefined) {
-        ctx.effect(() => locale.register(NS, { zh: ZH, en: EN }), "dsh-exec: dictionaries");
+    /**
+     * The UI language, resolved without depending on the locale service, so a
+     * missing service degrades to "Chinese on a Chinese machine" instead of
+     * silently rendering everything in English.
+     */
+    function detectChinese() {
+      try {
+        const html = String(document.documentElement && document.documentElement.lang || "");
+        if (html) return html.toLowerCase().startsWith("zh");
+      } catch {
+        /* no DOM */
       }
-      const t =
-        locale !== undefined ? locale.bind(NS) : (key, params) => interpolate(EN, key, params);
+      try {
+        return String(navigator.language || "").toLowerCase().startsWith("zh");
+      } catch {
+        return false;
+      }
+    }
+
+    function apply(ctx) {
+      // The documented client API is the `locale` service (`ctx.locale`,
+      // declared through exports.inject below). `ctx.get()` returns undefined
+      // for a service this module was not scoped to — which is exactly how the
+      // first version ended up rendering English on a Chinese host, so both
+      // paths are handled and the DOM language is the last resort.
+      let bound = null;
+      let section = null;
+      const dictate = detectChinese() ? ZH : EN;
+      const t = (key, params) => (bound !== null ? bound(key, params) : interpolate(dictate, key, params));
+
+      const attachLocale = (locale) => {
+        if (locale === undefined || locale === null || bound !== null) return;
+        try {
+          ctx.effect(() => locale.register(NS, { zh: ZH, en: EN }), "dsh-exec: dictionaries");
+          bound = locale.bind(NS);
+          if (section !== null) section.locale = NS;
+        } catch {
+          bound = null;
+        }
+      };
+
+      try {
+        attachLocale(ctx.locale ?? ctx.get?.("locale"));
+      } catch {
+        /* not scoped yet — the inject below covers it */
+      }
 
       ctx.inject(["slots"], (scope) => {
-        const section = {
+        section = {
           name: "settings.section",
           id: NS,
           order: 13,
           label: () => t("nav"),
         };
-        if (locale !== undefined) section.locale = NS;
+        if (bound !== null) section.locale = NS;
         scope.slots.inject("settings.section", () =>
           scope.slots.register(section, () => el(ExecSection, { t })),
         );
       });
+
+      if (bound === null) {
+        try {
+          ctx.inject(["locale"], (scoped) => attachLocale(scoped.locale));
+        } catch {
+          /* a client tree without locale keeps the document-derived dictionary */
+        }
+      }
     }
 
     exports.apply = apply;
-    exports.inject = ["slots"];
+    exports.inject = ["slots", "locale"];
     return module.exports;
   },
 });

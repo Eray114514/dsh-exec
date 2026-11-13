@@ -62,7 +62,7 @@ const mod = definition.factory((name) => {
 assert.ok(styleTags.length >= 1, 'the CSS block is injected when the module is built');
 assert.match(styleTags[0].textContent, /\.dshex/, 'the stylesheet is scoped to dshex');
 assert.equal(typeof mod.apply, 'function');
-assert.equal(JSON.stringify(mod.inject), '["slots"]', 'only slots is injected');
+assert.equal(JSON.stringify(mod.inject), '["slots","locale"]', 'slots and locale are declared');
 
 /* Render every string in the tree so text assertions are simple. */
 function textOf(node) {
@@ -88,6 +88,7 @@ function render(lang) {
     },
   };
   const ctx = {
+    locale,
     get: (name) => (name === 'locale' ? locale : undefined),
     effect: (fn) => fn(),
     inject: (deps, cb) => cb({ slots: { inject: (slot, fn) => fn(), register: (section, view) => sections.push({ section, view }) } }),
@@ -131,5 +132,37 @@ assert.match(zh.text, /恢复配置默认值/);
 // The permission warning is conditional: it only appears for full access.
 const full = zh.tree;
 assert.doesNotMatch(textOf(full), /不建议设为默认值/, 'the warning must not show for the default policy');
+
+/* Fallback: no locale service reachable (the reported regression).
+ *
+ * `ctx.get("locale")` returns undefined when the module is not scoped to it, and
+ * a Chinese host then rendered the whole page in English. The language must be
+ * derived from the document instead.
+ */
+function renderWithLanguage(langTag) {
+  sandbox.document.documentElement = { lang: langTag };
+  const sections = [];
+  const ctx = {
+    get: () => undefined,
+    effect: (fn) => fn(),
+    inject: (deps, cb) =>
+      cb({
+        slots: { inject: (slot, fn) => fn(), register: (section, view) => sections.push({ section, view }) },
+      }),
+  };
+  mod.apply(ctx);
+  assert.equal(sections.length, 1, 'the section must still register without a locale service');
+  const element = sections[0].view();
+  return { text: textOf(element.type(element.props)), section: sections[0].section };
+}
+
+const zhFallback = renderWithLanguage('zh-CN');
+assert.match(zhFallback.text, /默认设置/, 'a Chinese host must not fall back to English');
+assert.match(zhFallback.text, /完全访问/);
+assert.equal(zhFallback.section.locale, undefined, 'no locale service, no locale key on the section');
+
+const enFallback = renderWithLanguage('en-US');
+assert.match(enFallback.text, /Defaults/);
+assert.doesNotMatch(enFallback.text, /默认设置/);
 
 console.log('OK: dsh-exec client bundle assertions passed');

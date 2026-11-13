@@ -1,5 +1,7 @@
 # dsh-exec
 
+[中文](README.md) | English
+
 **Run DeepSeek Harness from a shell, a script or CI — and watch the session appear live in the desktop sidebar.**
 
 ```sh
@@ -71,6 +73,28 @@ The host ships four Agent presets — four plugin manifests, really. All of them
 
 The picker hides `ptc` and `minimal` behind the "code work tools" switch; the preset ids themselves are valid, so `--mode` reaches them directly.
 
+**This is the most substantial difference from the official one-shot headless entry.** `dsh --profile headless "TASK"` runs `@deepseek-ai/dsh-headless` (a bundle that drives core Agent/Session directly, with no Host layer), and its composition has **no `agent-preset-registry`** — check it yourself:
+
+```sh
+dsh --profile headless --dump-config | grep preset   # permission-presets only
+dsh --profile web      --dump-config | grep preset   # agent-preset-registry lives here
+```
+
+Presets exist only in the web/desktop composition. `dsh-exec` creates sessions inside the desktop process through `sessionController.create({ agentPreset })`, which is exactly how it borrows all four presets for the command line: same `dshx`, different `--mode`, a different agent.
+
+## Compared with the other headless CLIs
+
+| | `codex exec` | `claude -p` | `dsh --profile headless` | `dshx` |
+|---|---|---|---|---|
+| One command, final answer on stdout | yes | yes | yes | yes |
+| Session stays in **the same** GUI, click through and continue | its own CLI session, not in DSH | its own CLI session, not in DSH | no — invisible in the sidebar | yes — live in the sidebar |
+| Agent preset selectable | one fixed set | one fixed set | no — no preset registry in the composition | four: standard / ptc / minimal / cordis |
+| Reuses the models, plugins, skills and permission policy already configured here | no | no | yes | yes |
+| Streaming events for a program to consume | own JSON format | own stream-json | — | `--json` (NDJSON) |
+| Heartbeat while a long turn goes quiet | — | — | — | `progress{alive:true}` |
+
+"—" means the tool has no such concept, not that it is worse: `codex exec` and `claude -p` each have a mature session model of their own, it just is not DSH's. The last row is about providers that throttle for minutes (Gemini): whether five silent minutes mean "waiting" or "dead" is a question only a heartbeat can answer.
+
 ## Shipped defaults are neutral
 
 This package lands on **other people's machines**, so the factory defaults do not encode the author's setup:
@@ -79,7 +103,7 @@ This package lands on **other people's machines**, so the factory defaults do no
 - **`workspace-write` + `never`**: enough to do real work, and it never blocks an unattended run on an approval prompt it has no UI to answer. `danger-full-access` is a **per-run choice** (`--permission danger-full-access`), not the default.
 - Without `--model` / `--effort` nothing is sent at all, so no hidden default can override the host.
 
-To change the defaults on your machine, **do not edit YAML** — open the settings page and save. Values go to `<DSH_HOME>/plugin-data/dsh-exec/config.json`, layered over the profile's `cordis.patch.yml`; "Restore config defaults" deletes that file.
+To change the defaults on your machine, open the settings page and save — you don't *have* to edit YAML. Values go to `<DSH_HOME>/plugin-data/dsh-exec/config.json`, layered over the profile's `cordis.patch.yml` ("Restore config defaults" deletes that file). Editing the YAML directly still works; that layer just sits below the settings file.
 
 ## Settings page
 
