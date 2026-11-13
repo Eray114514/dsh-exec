@@ -1,6 +1,6 @@
 {
   "name": "dsh-exec",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Run DeepSeek Harness from a shell, a script or another agent: one line in, the final answer out, and the session appears live in the desktop sidebar.",
   "type": "module",
   "main": "index.js",
