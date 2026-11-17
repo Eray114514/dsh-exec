@@ -93,7 +93,7 @@ dsh --profile web      --dump-config | grep preset   # agent-preset-registry 在
 | 流式事件给程序消费 | 自家 JSON 格式 | 自家 stream-json | — | ✅ `--json`（NDJSON） |
 | 长任务静默期的心跳 | — | — | — | ✅ `progress{alive:true}` |
 
-"—" 是"这个工具没有这个概念"，不是缺点：`codex exec` 和 `claude -p` 各自有成熟的会话体系，只是那套体系不在 DSH 里。最后一行针对的是 Gemini 这类会长时间 429 的 provider —— 静默 5 分钟到底是"在等"还是"挂了"，只有心跳能回答。
+"—" 是"这个工具没有这个概念"，不是缺点：`codex exec` 和 `claude -p` 各自有成熟的会话体系，只是那套体系不在 DSH 里。最后一行针对的是会长时间退避的 provider —— 静默 5 分钟到底是"在等"还是"挂了"，只有心跳能回答。
 
 ## 默认值是"中性"的
 
@@ -135,9 +135,11 @@ dsh --profile web      --dump-config | grep preset   # agent-preset-registry 在
 
 ## 429 不是崩溃
 
-Gemini 系列会频繁返回 `429 RESOURCE_EXHAUSTED`。它只终止那一次尝试：重试层等 30–300 秒后在同一个 turn 里重跑同一步。等待期间会话日志几乎不动，这种安静很容易被误读成"进程死了"。
+有些 provider 在配额吃紧时会返回 `429 RESOURCE_EXHAUSTED`。DSH 的重试层不会因此结束这一轮：它按退避等 30–300 秒，然后在同一个 turn 里重跑同一步。等待期间会话日志几乎不动，这种安静很容易被误读成"进程死了" —— 尤其是你并不总是盯着屏幕。
 
-所以桥每 `heartbeatMs`（默认 15 秒）发一个 `progress` 帧，带 `elapsedMs`、`silentMs`、`steps`、`retries` 和 `alive: true`，外加带 provider 错误码的 `retry` 帧。`dshx` 会明说"Gemini 正常现象，turn 还在跑"。**判断存活看心跳，不要看日志安静不安静。**
+不是每个 provider 都会这样，也不是每个用 DSH 的人都会遇到；但只要遇到一次，你就会知道靠"日志有没有动"判断存活有多不可靠。
+
+所以桥每 `heartbeatMs`（默认 15 秒）发一个 `progress` 帧，带 `elapsedMs`、`silentMs`、`steps`、`retries` 和 `alive: true`，外加带 provider 错误码的 `retry` 帧。`dshx` 会明说"provider 要求退避，turn 还在跑"。**判断存活看心跳，不要看日志安静不安静。**
 
 ## 退出取证：谁关掉了 DSH
 

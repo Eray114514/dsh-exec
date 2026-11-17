@@ -24,7 +24,8 @@
  * profile's `cordis.patch.yml`, so a user never has to edit YAML by hand.
  *
  * NDJSON mirrors dsh-headless (`session` / `status` / `text` / `final`) and
- * adds `progress` heartbeats and `retry` frames. A 429 on Gemini is routine:
+ * adds `progress` heartbeats and `retry` frames. A provider that answers 429
+ * (quota) makes the host wait out a backoff of 30-300 s inside the same turn:
  * during a retry wait the log goes quiet for 30-300 s, so a heartbeat is the
  * only way for a caller to distinguish "waiting" from "dead".
  *
@@ -752,7 +753,7 @@ export function projectEvent(run, type, data, event) {
         retry: data.retry ?? null,
         delayMs: data.delayMs ?? null,
         code: data.failure?.code ?? 'RATE_LIMIT',
-        note: '429 is normal for Gemini; the turn is still running',
+        note: 'the provider asked us to back off; the turn is still running',
       };
     case 'turn/end':
       return { type: 'status', phase: 'turn_end', turn: data.turn, reason: data.reason ?? null };

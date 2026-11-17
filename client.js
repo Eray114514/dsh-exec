@@ -73,7 +73,7 @@ window.__ModuleLoader__.load({
       cliTitle: "从终端调用",
       noteTitle: "429 不是崩溃",
       note:
-        "Gemini 系列经常返回 429（配额耗尽）。宿主会等配额窗口过去后重跑同一步，这期间日志会安静 30~300 秒；插件按上面的心跳间隔发 progress 帧，所以调用方不会把「在等」误判成「挂了」。",
+        "有些 provider 会在配额吃紧时返回 429，让一轮对话在宿主内部退避几十秒到几分钟。这期间会话日志几乎不动，插件按上面的心跳间隔发 progress 帧，所以调用方不会把「在等」误判成「挂了」。",
       routeMissing: "宿主半边没有挂上（路由缺失）。",
     };
 
@@ -128,7 +128,7 @@ window.__ModuleLoader__.load({
       cliTitle: "From a terminal",
       noteTitle: "429 is not a crash",
       note:
-        "Gemini returns 429 (quota exhausted) routinely. The host waits out the window and re-runs the same step; the log stays quiet for 30-300 s. A progress frame on the cadence above is how a caller tells waiting from dead.",
+        "Some providers answer 429 when quota is tight, which makes one turn back off inside the host for tens of seconds or minutes. The session log barely moves during that wait; a progress frame on the cadence above is how a caller tells waiting from dead.",
       routeMissing: "The host half is not mounted (route missing).",
     };
 

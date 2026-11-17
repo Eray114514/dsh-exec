@@ -93,7 +93,7 @@ Presets exist only in the web/desktop composition. `dsh-exec` creates sessions i
 | Streaming events for a program to consume | own JSON format | own stream-json | — | `--json` (NDJSON) |
 | Heartbeat while a long turn goes quiet | — | — | — | `progress{alive:true}` |
 
-"—" means the tool has no such concept, not that it is worse: `codex exec` and `claude -p` each have a mature session model of their own, it just is not DSH's. The last row is about providers that throttle for minutes (Gemini): whether five silent minutes mean "waiting" or "dead" is a question only a heartbeat can answer.
+"—" means the tool has no such concept, not that it is worse: `codex exec` and `claude -p` each have a mature session model of their own, it just is not DSH's. The last row is about providers that back off for minutes: whether five silent minutes mean "waiting" or "dead" is a question only a heartbeat can answer.
 
 ## Shipped defaults are neutral
 
@@ -135,9 +135,11 @@ Responses never include the task text or the token.
 
 ## 429 is not a crash
 
-Gemini throttles `gemini-4-*` aggressively. A `429 RESOURCE_EXHAUSTED` ends only that attempt: the retry layer waits 30–300 s and re-runs the same step inside the open turn. During the wait the session log barely moves, and that silence is easily misread as a dead worker.
+Some providers answer `429 RESOURCE_EXHAUSTED` when quota is tight. The retry layer does not end the turn for that: it backs off for 30–300 s and re-runs the same step inside the open turn. During the wait the session log barely moves, and that silence is easily misread as a dead worker — especially when you are not watching the screen.
 
-So the bridge emits a `progress` frame every `heartbeatMs` (default 15 s) with `elapsedMs`, `silentMs`, `steps`, `retries` and `alive: true`, plus a `retry` frame carrying the provider code. `dshx` prints an explicit "normal for Gemini, turn still running" line. **Judge liveness by the heartbeat, never by a quiet log.**
+Not every provider does this, and not every DSH user will hit it. But once you do, you find out how little "the log moved" tells you about liveness.
+
+So the bridge emits a `progress` frame every `heartbeatMs` (default 15 s) with `elapsedMs`, `silentMs`, `steps`, `retries` and `alive: true`, plus a `retry` frame carrying the provider code. `dshx` prints an explicit "the provider asked us to back off, turn still running" line. **Judge liveness by the heartbeat, never by a quiet log.**
 
 ## Exit forensics: who closed DSH?
 

@@ -239,7 +239,7 @@ async function main() {
   const retry = projectEvent(fakeRun, 'llm/retry', { retry: 1, delayMs: 30000, failure: { code: 'RATE_LIMIT' } });
   assert.equal(retry.phase, 'retry');
   assert.equal(retry.code, 'RATE_LIMIT');
-  assert.match(retry.note, /normal/);
+  assert.match(retry.note, /still running/, 'a retry must read as waiting, not as a failure');
   assert.equal(fakeRun.retries, 1);
   assert.equal(projectEvent(fakeRun, 'turn/end', { turn: 1, reason: { kind: 'completed' } }).phase, 'turn_end');
   assert.equal(projectEvent(fakeRun, 'unknown/thing', {}), undefined);
@@ -294,7 +294,7 @@ async function main() {
   assert.equal(host.calls.selectModel.length, 0, 'nothing is pinned when no model was configured');
 
   // Explicit PTC + explicit model are honoured (only when the caller asks).
-  req = new FakeReq('POST', RUNS, { task: 'second', mode: 'ptc', model: 'gemini-4-argon', effort: 'low' }, auth);
+  req = new FakeReq('POST', RUNS, { task: 'second', mode: 'ptc', model: 'acme-model-1', effort: 'low' }, auth);
   res = new FakeRes();
   await routeFor(RUNS)(req, res);
   assert.equal(res.statusCode, 202, res.body);
@@ -302,7 +302,7 @@ async function main() {
   assert.equal(host.calls.create[1].agentPreset, 'ptc');
   assert.deepEqual(host.calls.selectModel[0], {
     sessionId: 'session-test-2',
-    model: 'gemini-4-argon',
+    model: 'acme-model-1',
     reasoningEffort: 'low',
   }, 'an explicit model does not smuggle in a hard-coded provider');
 

@@ -163,12 +163,12 @@ function describe(event) {
   if (event.type === 'text') return `text +${String(event.text ?? '').length} chars`;
   if (event.type === 'progress') {
     const hint = event.phase === 'retry-wait'
-      ? ' — waiting out a 429, normal for Gemini, not a crash'
+      ? ' — waiting out a provider 429, not a crash'
       : '';
     return `alive ${Math.round(event.elapsedMs / 1000)}s, ${event.steps} steps, ${event.retries} retries, silent ${Math.round(event.silentMs / 1000)}s${hint}`;
   }
   if (event.phase === 'retry') {
-    return `429 retry ${event.code} — waiting ${Math.round((event.delayMs ?? 0) / 1000)}s, normal for Gemini, turn still running`;
+    return `429 retry ${event.code} — the provider asked us to back off for ${Math.round((event.delayMs ?? 0) / 1000)}s, turn still running`;
   }
   return `${event.type}${event.phase ? ':' + event.phase : ''}${event.code ? ' ' + event.code : ''}`;
 }
